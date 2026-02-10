@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Stock Analyzer - 智能股票技术分析</title>
+    <meta name="description" content="使用 AI 大模型进行专业的股票技术分析">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css?v=2">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">📊</span>
+                <h1>AI Stock Analyzer</h1>
+            </div>
+            <p class="subtitle">智能股票技术分析 · Powered by Gemini AI</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Input Section -->
+            <section class="input-section glass-card">
+                <h2 class="section-title">分析设置</h2>
+                <form id="analyzeForm" class="analyze-form">
+                    <div class="form-group">
+                        <label for="symbol">股票代码</label>
+                        <input type="text" id="symbol" name="symbol" placeholder="美股: AAPL, NVDA | A股: 600519, 000858"
+                            required autocomplete="off">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="period">数据周期</label>
+                            <select id="period" name="period">
+                                <option value="1mo">1个月</option>
+                                <option value="3mo">3个月</option>
+                                <option value="6mo">6个月</option>
+                                <option value="1y">1年</option>
+                                <option value="2y" selected>2年</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="model">AI 模型</label>
+                            <select id="model" name="model">
+                                <option value="gemini-flash">Gemini 3 Flash</option>
+                                <option value="gemini-pro">Gemini 3 Pro</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="analyzeBtn" class="btn-primary">
+                        <span class="btn-text">🔍 开始分析</span>
+                        <span class="btn-loading" style="display: none;">
+                            <span class="spinner"></span> 分析中...
+                        </span>
+                    </button>
+                </form>
+
+                <div id="apiStatus" class="api-status"></div>
+            </section>
+
+            <!-- Progress Bar -->
+            <section id="progressSection" class="progress-section glass-card" style="display: none;">
+                <div class="progress-header">
+                    <span id="progressStep" class="progress-step">准备中...</span>
+                    <span id="progressPercent" class="progress-percent">0%</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div id="progressBar" class="progress-bar"></div>
+                </div>
+                <p id="progressDetail" class="progress-detail">正在初始化分析引擎...</p>
+            </section>
+
+            <!-- Results Section -->
+            <section id="resultsSection" class="results-section" style="display: none;">
+                <!-- Stock Info Card -->
+                <div class="stock-info glass-card">
+                    <div class="stock-header">
+                        <div class="stock-name">
+                            <h2 id="stockSymbol">--</h2>
+                            <p id="stockName">--</p>
+                        </div>
+                        <div class="stock-price">
+                            <span id="stockPrice" class="price">$--</span>
+                            <span id="stockChange" class="change">--</span>
+                        </div>
+                    </div>
+
+                    <div class="indicators-grid">
+                        <div class="indicator-item">
+                            <span class="indicator-label">RSI(14)</span>
+                            <span id="rsiValue" class="indicator-value">--</span>
+                        </div>
+                        <div class="indicator-item">
+                            <span class="indicator-label">MA20</span>
+                            <span id="ma20Value" class="indicator-value">--</span>
+                        </div>
+                        <div class="indicator-item">
+                            <span class="indicator-label">MA50</span>
+                            <span id="ma50Value" class="indicator-value">--</span>
+                        </div>
+                        <div class="indicator-item">
+                            <span class="indicator-label">MACD</span>
+                            <span id="macdValue" class="indicator-value">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart Section -->
+                <div class="chart-section glass-card">
+                    <div class="chart-header">
+                        <h3 class="section-title">📈 技术图表</h3>
+                        <div class="chart-tabs" id="chartTabs">
+                            <button class="chart-tab active" data-tf="daily">日K</button>
+                            <button class="chart-tab" data-tf="weekly">周K</button>
+                            <button class="chart-tab" data-tf="monthly">月K</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <img id="chartImageDaily" class="chart-img active" src="" alt="日K线图" style="display: none;">
+                        <img id="chartImageWeekly" class="chart-img" src="" alt="周K线图" style="display: none;">
+                        <img id="chartImageMonthly" class="chart-img" src="" alt="月K线图" style="display: none;">
+                        <div id="chartPlaceholder" class="chart-placeholder">
+                            图表将在分析后显示
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis Section -->
+                <div class="analysis-section glass-card">
+                    <div class="analysis-header">
+                        <h3 class="section-title">🤖 AI 技术分析</h3>
+                        <span id="modelUsed" class="model-badge">--</span>
+                    </div>
+                    <div id="analysisContent" class="analysis-content">
+                        <p class="placeholder-text">分析结果将在这里显示...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="error-message glass-card" style="display: none;">
+                <span class="error-icon">⚠️</span>
+                <p id="errorText">发生错误</p>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>数据来源: Alpha Vantage / Yahoo Finance | AI 分析仅供参考，不构成投资建议</p>
+        </footer>
+    </div>
+
+    <script src="/static/app.js?v=2"></script>
+</body>
+
+</html>

@@ -1,0 +1,20 @@
+# Byte-compiled
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Charts (generated at runtime)
+static/charts/*.png
+
+# OS
+.DS_Store
+Thumbs.db
