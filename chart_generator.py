@@ -76,103 +76,108 @@ def _generate_single_chart(chart_df: pd.DataFrame, symbol: str,
     if len(chart_df) < 5:
         return None  # Not enough data
     
-    # Timeframe labels
-    tf_labels = {
-        'daily': '日K线',
-        'weekly': '周K线', 
-        'monthly': '月K线'
-    }
-    tf_label = tf_labels.get(timeframe, timeframe)
-    
-    # Detect currency
-    price = chart_df['Close'].iloc[-1]
-    currency_label = 'Price (¥)' if price > 5 and symbol[0].isdigit() else 'Price ($)'
-    
-    # Define custom style (dark theme)
-    mc = mpf.make_marketcolors(
-        up='#00ff88',      # Green for up
-        down='#ff4444',    # Red for down
-        edge='inherit',
-        wick='inherit',
-        volume='inherit',
-    )
-    
-    s = mpf.make_mpf_style(
-        base_mpf_style='nightclouds',
-        marketcolors=mc,
-        gridstyle='-',
-        gridcolor='#333333',
-        facecolor='#1a1a2e',
-        figcolor='#1a1a2e',
-        rc={'font.size': 10}
-    )
-    
-    # Prepare additional plots
-    add_plots = []
-    
-    # Moving averages
-    if 'MA_20' in chart_df.columns and not chart_df['MA_20'].isna().all():
-        ma20_label = 'MA20' if timeframe == 'daily' else ('MA20W' if timeframe == 'weekly' else 'MA12M')
-        add_plots.append(mpf.make_addplot(chart_df['MA_20'], color='#ffd700', width=1, label=ma20_label))
-    if 'MA_50' in chart_df.columns and not chart_df['MA_50'].isna().all():
-        add_plots.append(mpf.make_addplot(chart_df['MA_50'], color='#ff69b4', width=1, label='MA50'))
-    
-    # Bollinger Bands (daily only)
-    if timeframe == 'daily':
-        if 'BB_Upper' in chart_df.columns and not chart_df['BB_Upper'].isna().all():
-            add_plots.append(mpf.make_addplot(chart_df['BB_Upper'], color='#4a90d9', width=0.7, linestyle='--'))
-            add_plots.append(mpf.make_addplot(chart_df['BB_Lower'], color='#4a90d9', width=0.7, linestyle='--'))
+    try:
+        # Timeframe labels
+        tf_labels = {
+            'daily': '日K线',
+            'weekly': '周K线', 
+            'monthly': '月K线'
+        }
+        tf_label = tf_labels.get(timeframe, timeframe)
         
-        # RSI subplot (daily only)
-        if 'RSI_14' in chart_df.columns and not chart_df['RSI_14'].isna().all():
-            add_plots.append(mpf.make_addplot(chart_df['RSI_14'], panel=2, color='#00bfff', width=1, ylabel='RSI'))
-            rsi_70 = pd.Series([70] * len(chart_df), index=chart_df.index)
-            rsi_30 = pd.Series([30] * len(chart_df), index=chart_df.index)
-            add_plots.append(mpf.make_addplot(rsi_70, panel=2, color='#ff6666', width=0.5, linestyle='--'))
-            add_plots.append(mpf.make_addplot(rsi_30, panel=2, color='#66ff66', width=0.5, linestyle='--'))
+        # Detect currency
+        price = chart_df['Close'].iloc[-1]
+        currency_label = 'Price (¥)' if price > 5 and symbol[0].isdigit() else 'Price ($)'
         
-        # MACD subplot (daily only)
-        if 'MACD' in chart_df.columns and not chart_df['MACD'].isna().all():
-            add_plots.append(mpf.make_addplot(chart_df['MACD'], panel=3, color='#00ff88', width=1, ylabel='MACD'))
-            add_plots.append(mpf.make_addplot(chart_df['MACD_Signal'], panel=3, color='#ff69b4', width=1))
-            hist_colors = ['#00ff88' if v >= 0 else '#ff4444' for v in chart_df['MACD_Hist'].fillna(0)]
-            add_plots.append(mpf.make_addplot(chart_df['MACD_Hist'], panel=3, type='bar', color=hist_colors, width=0.7))
-    
-    # Determine panel ratios
-    has_rsi = timeframe == 'daily' and 'RSI_14' in chart_df.columns and not chart_df['RSI_14'].isna().all()
-    has_macd = timeframe == 'daily' and 'MACD' in chart_df.columns and not chart_df['MACD'].isna().all()
-    
-    if has_rsi and has_macd:
-        panel_ratios = (4, 1, 1, 1)
-    elif has_rsi or has_macd:
-        panel_ratios = (4, 1, 1)
-    else:
-        panel_ratios = (3, 1)
-    
-    # Chart size: daily is larger, weekly/monthly smaller
-    figsize = (14, 10) if timeframe == 'daily' else (14, 7)
-    
-    # Generate chart
-    fig, axes = mpf.plot(
-        chart_df,
-        type='candle',
-        style=s,
-        title=f'\n{symbol.upper()} {tf_label}',
-        ylabel=currency_label,
-        volume=True,
-        volume_panel=1,
-        addplot=add_plots if add_plots else None,
-        figsize=figsize,
-        panel_ratios=panel_ratios,
-        returnfig=True,
-        tight_layout=True,
-    )
-    
-    # Save chart
-    fig.savefig(filepath, dpi=150, bbox_inches='tight', facecolor='#1a1a2e')
-    plt.close(fig)
-    
-    return filepath
+        # Define custom style (dark theme)
+        mc = mpf.make_marketcolors(
+            up='#00ff88',      # Green for up
+            down='#ff4444',    # Red for down
+            edge='inherit',
+            wick='inherit',
+            volume='inherit',
+        )
+        
+        s = mpf.make_mpf_style(
+            base_mpf_style='nightclouds',
+            marketcolors=mc,
+            gridstyle='-',
+            gridcolor='#333333',
+            facecolor='#1a1a2e',
+            figcolor='#1a1a2e',
+            rc={'font.size': 10}
+        )
+        
+        # Prepare additional plots
+        add_plots = []
+        
+        # Moving averages
+        if 'MA_20' in chart_df.columns and not chart_df['MA_20'].isna().all():
+            ma20_label = 'MA20' if timeframe == 'daily' else ('MA20W' if timeframe == 'weekly' else 'MA12M')
+            add_plots.append(mpf.make_addplot(chart_df['MA_20'], color='#ffd700', width=1, label=ma20_label))
+        if 'MA_50' in chart_df.columns and not chart_df['MA_50'].isna().all():
+            add_plots.append(mpf.make_addplot(chart_df['MA_50'], color='#ff69b4', width=1, label='MA50'))
+        
+        # Bollinger Bands (daily only)
+        if timeframe == 'daily':
+            if 'BB_Upper' in chart_df.columns and not chart_df['BB_Upper'].isna().all():
+                add_plots.append(mpf.make_addplot(chart_df['BB_Upper'], color='#4a90d9', width=0.7, linestyle='--'))
+                add_plots.append(mpf.make_addplot(chart_df['BB_Lower'], color='#4a90d9', width=0.7, linestyle='--'))
+            
+            # RSI subplot (daily only)
+            if 'RSI_14' in chart_df.columns and not chart_df['RSI_14'].isna().all():
+                add_plots.append(mpf.make_addplot(chart_df['RSI_14'], panel=2, color='#00bfff', width=1, ylabel='RSI'))
+                rsi_70 = pd.Series([70] * len(chart_df), index=chart_df.index)
+                rsi_30 = pd.Series([30] * len(chart_df), index=chart_df.index)
+                add_plots.append(mpf.make_addplot(rsi_70, panel=2, color='#ff6666', width=0.5, linestyle='--'))
+                add_plots.append(mpf.make_addplot(rsi_30, panel=2, color='#66ff66', width=0.5, linestyle='--'))
+            
+            # MACD subplot (daily only)
+            if 'MACD' in chart_df.columns and not chart_df['MACD'].isna().all():
+                add_plots.append(mpf.make_addplot(chart_df['MACD'], panel=3, color='#00ff88', width=1, ylabel='MACD'))
+                add_plots.append(mpf.make_addplot(chart_df['MACD_Signal'], panel=3, color='#ff69b4', width=1))
+                hist_colors = ['#00ff88' if v >= 0 else '#ff4444' for v in chart_df['MACD_Hist'].fillna(0)]
+                add_plots.append(mpf.make_addplot(chart_df['MACD_Hist'], panel=3, type='bar', color=hist_colors, width=0.7))
+        
+        # Determine panel ratios
+        has_rsi = timeframe == 'daily' and 'RSI_14' in chart_df.columns and not chart_df['RSI_14'].isna().all()
+        has_macd = timeframe == 'daily' and 'MACD' in chart_df.columns and not chart_df['MACD'].isna().all()
+        
+        if has_rsi and has_macd:
+            panel_ratios = (4, 1, 1, 1)
+        elif has_rsi or has_macd:
+            panel_ratios = (4, 1, 1)
+        else:
+            panel_ratios = (3, 1)
+        
+        # Chart size: daily is larger, weekly/monthly smaller
+        figsize = (14, 10) if timeframe == 'daily' else (14, 7)
+        
+        # Generate chart
+        fig, axes = mpf.plot(
+            chart_df,
+            type='candle',
+            style=s,
+            title=f'\n{symbol.upper()} {tf_label}',
+            ylabel=currency_label,
+            volume=True,
+            volume_panel=1,
+            addplot=add_plots if add_plots else None,
+            figsize=figsize,
+            panel_ratios=panel_ratios,
+            returnfig=True,
+            tight_layout=True,
+        )
+        
+        # Save chart
+        fig.savefig(filepath, dpi=150, bbox_inches='tight', facecolor='#1a1a2e')
+        plt.close(fig)
+        
+        return filepath
+    except Exception as e:
+        plt.close('all')  # Prevent memory leak on error
+        print(f"[Chart] ✗ Error generating {timeframe} chart: {e}")
+        return None
 
 
 def generate_all_charts(df: pd.DataFrame, symbol: str) -> dict:
@@ -193,11 +198,14 @@ def generate_all_charts(df: pd.DataFrame, symbol: str) -> dict:
     chart_paths = {}
     
     # Daily chart (last 60 bars)
-    daily_path = os.path.join(charts_dir, f"{symbol.upper()}_{timestamp}_daily.png")
-    result = _generate_single_chart(df.copy(), symbol, 'daily', daily_path, show_days=60)
-    if result:
-        chart_paths['daily'] = result
-        print(f"[Chart] ✓ Daily chart generated")
+    try:
+        daily_path = os.path.join(charts_dir, f"{symbol.upper()}_{timestamp}_daily.png")
+        result = _generate_single_chart(df.copy(), symbol, 'daily', daily_path, show_days=60)
+        if result:
+            chart_paths['daily'] = result
+            print(f"[Chart] ✓ Daily chart generated")
+    except Exception as e:
+        print(f"[Chart] ✗ Daily chart error: {e}")
     
     # Weekly chart (last 52 weeks)
     try:

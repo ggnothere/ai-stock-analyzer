@@ -18,3 +18,6 @@ static/charts/*.png
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+app.log

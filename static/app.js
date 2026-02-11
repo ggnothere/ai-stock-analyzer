@@ -62,7 +62,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 120000);
 
-            const response = await fetch('/api/analyze', {
+            // Helper to make the fetch call
+            const doFetch = () => fetch('/api/analyze', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -71,6 +72,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: JSON.stringify({ symbol, period, model }),
                 signal: controller.signal
             });
+
+            let response;
+            try {
+                response = await doFetch();
+            } catch (fetchErr) {
+                // Auto-retry once on network error (Failed to fetch / connection reset)
+                if (fetchErr.name !== 'AbortError') {
+                    console.log('[Retry] Network error, retrying in 2s...', fetchErr.message);
+                    await new Promise(r => setTimeout(r, 2000));
+                    response = await doFetch();
+                } else {
+                    throw fetchErr;
+                }
+            }
 
             clearTimeout(timeoutId);
 
@@ -98,9 +113,11 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             hideProgress();
             if (error.name === 'AbortError') {
-                showError('请求超时，请稍后重试。AI 分析通常需要 30-60 秒。');
+                showError('请求超时（2分钟），分析时间可能较长，请稍后重试。');
+            } else if (error.message === 'Failed to fetch' || error instanceof TypeError) {
+                showError('网络连接失败，请检查：\n1. 服务器是否在运行\n2. 网络连接是否正常\n3. 如使用VPN请尝试切换节点');
             } else {
-                showError(error.message || '网络请求失败，请检查服务器是否运行');
+                showError(error.message || '未知错误，请刷新页面后重试');
             }
         } finally {
             setLoading(false);

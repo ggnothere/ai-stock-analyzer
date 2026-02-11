@@ -4,6 +4,7 @@ Supports both Gemini and ChatGPT APIs for stock analysis
 """
 import os
 import base64
+import time
 import traceback
 from typing import Optional
 import config
@@ -104,28 +105,57 @@ def analyze_with_gemini(data_text: str, image_path: Optional[str] = None,
             for tf in ['daily', 'weekly', 'monthly']:
                 path = image_paths.get(tf)
                 if path and os.path.exists(path):
-                    import PIL.Image
-                    image = PIL.Image.open(path)
-                    content.append(f"\n【{tf_labels.get(tf, tf)}】\n")
-                    content.append(image)
-                    images_added += 1
-                    print(f"[Gemini] Including {tf} chart: {path}")
+                    try:
+                        import PIL.Image
+                        image = PIL.Image.open(path)
+                        content.append(f"\n【{tf_labels.get(tf, tf)}】\n")
+                        content.append(image)
+                        images_added += 1
+                        print(f"[Gemini] Including {tf} chart: {path}")
+                    except Exception as img_err:
+                        print(f"[Gemini] ✗ Failed to load {tf} chart: {img_err}")
             
             content.append("\n\n" + prompt)
         elif image_path and os.path.exists(image_path):
-            import PIL.Image
-            image = PIL.Image.open(image_path)
-            content = ["请结合以下K线图和数据进行分析：\n\n" + prompt, image]
-            images_added = 1
-            print(f"[Gemini] Including chart image: {image_path}")
+            try:
+                import PIL.Image
+                image = PIL.Image.open(image_path)
+                content = ["请结合以下K线图和数据进行分析：\n\n" + prompt, image]
+                images_added = 1
+                print(f"[Gemini] Including chart image: {image_path}")
+            except Exception as img_err:
+                print(f"[Gemini] ✗ Failed to load chart image: {img_err}")
+                content = [prompt]
         else:
             content = [prompt]
         
         print(f"[Gemini] Sending request to {model_name} with {images_added} chart(s)...")
-        response = model.generate_content(
-            content,
-            request_options={"timeout": 120}
-        )
+        
+        # Retry logic for transient API errors
+        last_error = None
+        for attempt in range(2):  # max 2 attempts
+            try:
+                response = model.generate_content(
+                    content,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=0.2,
+                    ),
+                    request_options={"timeout": 120}
+                )
+                break  # Success
+            except Exception as api_err:
+                last_error = api_err
+                err_str = str(api_err).lower()
+                # Retry on transient errors (5xx, timeout, rate limit)
+                if attempt == 0 and any(kw in err_str for kw in ['500', '503', 'timeout', '429', 'overloaded', 'unavailable']):
+                    print(f"[Gemini] Transient error, retrying in 3s: {api_err}")
+                    time.sleep(3)
+                else:
+                    raise
+        
+        # Validate response
+        if not response.text or not response.text.strip():
+            return {"error": "AI returned empty response", "success": False}
         
         display_name = "Gemini 3 Flash" if "flash" in model_name else "Gemini 3 Pro"
         

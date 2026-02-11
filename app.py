@@ -3,6 +3,7 @@ AI Stock Technical Analyzer - Flask Web Application
 """
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
+import traceback
 
 from stock_data import get_stock_data, format_data_for_ai
 from chart_generator import generate_all_charts, cleanup_old_charts
@@ -42,18 +43,31 @@ def analyze():
         if not symbol:
             return jsonify({"error": "Stock symbol is required", "success": False}), 400
         
+        print(f"\n{'='*50}")
+        print(f"[API] Analyze request: symbol={symbol}, period={period}, model={model}")
+        print(f"{'='*50}")
+        
         # Cleanup old charts
         cleanup_old_charts(max_age_hours=1)
         
-        # Fetch stock data
-        stock_data = get_stock_data(symbol, period)
+        # Phase 1: Fetch stock data
+        try:
+            stock_data = get_stock_data(symbol, period)
+        except Exception as e:
+            traceback.print_exc()
+            return jsonify({"error": f"数据获取失败: {str(e)}", "success": False}), 500
         
         if not stock_data.get('success'):
             return jsonify(stock_data), 400
         
-        # Generate multi-timeframe charts
-        raw_df = stock_data.pop('raw_df')  # Remove DataFrame from response
-        chart_paths = generate_all_charts(raw_df, symbol)
+        # Phase 2: Generate charts
+        raw_df = stock_data.pop('raw_df')
+        try:
+            chart_paths = generate_all_charts(raw_df, symbol)
+        except Exception as e:
+            traceback.print_exc()
+            chart_paths = {}
+            print(f"[API] Chart generation failed, continuing without charts: {e}")
         
         # Build chart URLs for frontend
         chart_urls = {}
@@ -63,14 +77,18 @@ def analyze():
         # Format data for AI
         data_text = format_data_for_ai({**stock_data, 'data': stock_data['data']})
         
-        # Perform AI analysis with all charts
-        analysis_result = analyze_stock(
-            data_text=data_text,
-            image_path=chart_paths.get('daily'),  # backward compat
-            symbol=symbol,
-            model=model,
-            image_paths=chart_paths
-        )
+        # Phase 3: AI analysis
+        try:
+            analysis_result = analyze_stock(
+                data_text=data_text,
+                image_path=chart_paths.get('daily'),
+                symbol=symbol,
+                model=model,
+                image_paths=chart_paths
+            )
+        except Exception as e:
+            traceback.print_exc()
+            analysis_result = {"error": f"AI 分析失败: {str(e)}", "success": False}
         
         # Prepare response
         response = {
@@ -78,7 +96,7 @@ def analyze():
             "symbol": symbol,
             "period": period,
             "model": model,
-            "chart_url": chart_urls.get('daily', ''),  # backward compat
+            "chart_url": chart_urls.get('daily', ''),
             "chart_urls": chart_urls,
             "stock_info": stock_data.get('info', {}),
             "indicators": stock_data.get('indicators', {}),
@@ -86,9 +104,11 @@ def analyze():
             "analysis": analysis_result
         }
         
+        print(f"[API] ✓ Analysis complete for {symbol}")
         return jsonify(response)
         
     except Exception as e:
+        traceback.print_exc()
         return jsonify({"error": str(e), "success": False}), 500
 
 
@@ -113,5 +133,6 @@ if __name__ == '__main__':
     app.run(
         debug=config.DEBUG,
         host=config.HOST,
-        port=config.PORT
+        port=config.PORT,
+        use_reloader=False  # Disable reloader to prevent mid-request server restarts
     )

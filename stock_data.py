@@ -6,8 +6,28 @@ import requests
 import pandas as pd
 import numpy as np
 import math
+import time
 from datetime import datetime, timedelta
 import config
+
+
+def _request_with_retry(url, params=None, timeout=15, max_retries=2):
+    """HTTP GET with retry logic for transient network errors"""
+    last_error = None
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.get(url, params=params, timeout=timeout)
+            response.raise_for_status()
+            return response
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout,
+                requests.exceptions.HTTPError) as e:
+            last_error = e
+            if attempt < max_retries:
+                wait = 2 ** attempt  # 1s, 2s
+                print(f"[Network] Retry {attempt+1}/{max_retries} after {wait}s: {e}")
+                time.sleep(wait)
+    raise last_error
 
 
 def safe_value(val, decimal_places=2):
@@ -222,7 +242,7 @@ def get_data_alpha_vantage(symbol: str, period: str = "2y") -> dict:
             "apikey": api_key
         }
         
-        response = requests.get(url, params=params, timeout=30)
+        response = _request_with_retry(url, params=params, timeout=15)
         data = response.json()
         
         # Check for errors
@@ -302,7 +322,7 @@ def get_stock_info_av(symbol: str, api_key: str, df: pd.DataFrame) -> dict:
             "symbol": symbol.upper(),
             "apikey": api_key
         }
-        response = requests.get(url, params=params, timeout=10)
+        response = _request_with_retry(url, params=params, timeout=10, max_retries=1)
         info = response.json()
         
         return {
@@ -339,8 +359,11 @@ def get_data_yfinance(symbol: str, period: str = "2y") -> dict:
         if df.empty:
             return {"error": f"No data found for {symbol}", "success": False}
         
-        # Get stock info
-        info = stock.info
+        # Get stock info (protected - stock.info can crash)
+        try:
+            info = stock.info or {}
+        except Exception:
+            info = {}
         stock_info = {
             "symbol": symbol.upper(),
             "name": info.get("longName", symbol),
@@ -413,6 +436,16 @@ def build_stats(df) -> dict:
 
 def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """Calculate technical indicators"""
+    
+    # Data validation: drop rows with invalid OHLCV
+    for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+    df = df.dropna(subset=['Open', 'High', 'Low', 'Close'])
+    df = df[df['Close'] > 0]  # Remove zero/negative prices
+    
+    if df.empty:
+        return df
     
     # Moving Averages
     df['MA_20'] = df['Close'].rolling(window=20).mean()
