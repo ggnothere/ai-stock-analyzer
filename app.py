@@ -74,6 +74,8 @@ def analyze():
         
         if not stock_data.get('success'):
             return jsonify(stock_data), 400
+            
+        print(f"[API] Data source: {stock_data.get('source', 'Unknown')}")
         
         # Phase 2: Generate charts
         raw_df = stock_data.pop('raw_df')

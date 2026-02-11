@@ -178,7 +178,8 @@ def get_data_akshare(symbol: str, period: str = "2y") -> dict:
             "indicators": indicators,
             "stats": stats,
             "data": df_json.to_dict(orient='records'),
-            "raw_df": df
+            "raw_df": df,
+            "source": "AKShare"
         }
         
     except Exception as e:
@@ -306,7 +307,8 @@ def get_data_alpha_vantage(symbol: str, period: str = "2y") -> dict:
             "indicators": indicators,
             "stats": stats,
             "data": df_json.to_dict(orient='records'),
-            "raw_df": df
+            "raw_df": df,
+            "source": "Alpha Vantage"
         }
         
     except Exception as e:
@@ -398,7 +400,8 @@ def get_data_yfinance(symbol: str, period: str = "2y") -> dict:
             "indicators": indicators,
             "stats": stats,
             "data": df_json.to_dict(orient='records'),
-            "raw_df": df
+            "raw_df": df,
+            "source": "yfinance"
         }
         
     except Exception as e:

@@ -170,7 +170,7 @@ def _generate_single_chart(chart_df: pd.DataFrame, symbol: str,
         )
         
         # Save chart
-        fig.savefig(filepath, dpi=150, bbox_inches='tight', facecolor='#1a1a2e')
+        fig.savefig(filepath, dpi=100, bbox_inches='tight', facecolor='#1a1a2e')
         plt.close(fig)
         
         return filepath
