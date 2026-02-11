@@ -89,10 +89,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
             clearTimeout(timeoutId);
 
-            // Check if response is JSON (ngrok may return HTML interstitial)
+            // Check HTTP status first
+            if (!response.ok) {
+                let errorMsg = `服务器错误 (${response.status})`;
+                try {
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const errData = await response.json();
+                        errorMsg = errData.error || errorMsg;
+                    } else {
+                        const text = await response.text();
+                        // Extract useful error info from HTML
+                        const match = text.match(/<title>(.*?)<\/title>/i) || text.match(/<h1>(.*?)<\/h1>/i);
+                        if (match) errorMsg += `: ${match[1]}`;
+                        console.error('Server HTML response:', text.substring(0, 500));
+                    }
+                } catch (e) { /* ignore parse errors */ }
+                throw new Error(errorMsg);
+            }
+
+            // Check if response is JSON
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('服务器返回了非JSON响应，请刷新页面后重试');
+                const text = await response.text();
+                console.error('Non-JSON response:', text.substring(0, 500));
+                throw new Error('服务器返回了非JSON响应，可能是服务器内部错误，请查看服务器日志');
             }
 
             const data = await response.json();

@@ -16,6 +16,21 @@ app = Flask(__name__)
 os.makedirs(os.path.join(os.path.dirname(__file__), 'static', 'charts'), exist_ok=True)
 
 
+# Global error handlers — always return JSON, never HTML
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({"error": "Not found", "success": False}), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    return jsonify({"error": f"Internal server error: {str(e)}", "success": False}), 500
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    traceback.print_exc()
+    return jsonify({"error": f"Unexpected error: {str(e)}", "success": False}), 500
+
+
 @app.route('/')
 def index():
     """Render main page"""
